@@ -1,213 +1,192 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:project_mobile/pages/home/HomePage/home_page.dart';
 import 'package:project_mobile/pages/home/MainPage/main_page.dart';
 import 'package:project_mobile/utils/colors.dart';
 import 'package:project_mobile/utils/dimensions.dart';
 
-class OrderReviewPage extends StatelessWidget {
-  final String itemName;
-  final String itemSize;
-  final int quantity;
-  final double itemPrice;
+class OrderReviewPage extends StatefulWidget {
+  final List<Map<String, dynamic>> items;
   final double shippingFee;
   final double totalPrice;
 
-  OrderReviewPage({
-    required this.itemName,
-    required this.itemSize,
-    required this.quantity,
-    required this.itemPrice,
+  const OrderReviewPage({
+    Key? key,
+    required this.items,
     required this.shippingFee,
     required this.totalPrice,
-  });
+  }) : super(key: key);
+
+  @override
+  State<OrderReviewPage> createState() => _OrderReviewPageState();
+}
+
+class _OrderReviewPageState extends State<OrderReviewPage> {
+  final Map<String, double> _ratings = {};
+  final Map<String, TextEditingController> _reviewControllers = {};
+
+  final String? _userId = FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    for (var item in widget.items) {
+      final productId = item['productId'];
+      _ratings[productId] = 0;
+      _reviewControllers[productId] = TextEditingController();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _reviewControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _submitAllReviews() async {
+    if (_userId == null) return;
+
+    bool allFilled = true;
+    for (var entry in _ratings.entries) {
+      if (entry.value == 0 || _reviewControllers[entry.key]!.text.isEmpty) {
+        allFilled = false;
+        break;
+      }
+    }
+
+    if (!allFilled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng đánh giá và nhận xét đầy đủ tất cả sản phẩm.')),
+      );
+      return;
+    }
+
+    for (var item in widget.items) {
+      final productId = item['productId'];
+      final rating = _ratings[productId]!;
+      final reviewText = _reviewControllers[productId]!.text;
+
+      await FirebaseFirestore.instance
+          .collection('reviews')
+          .doc('${_userId}_$productId')
+          .set({
+        'userId': _userId,
+        'productId': productId,
+        'rating': rating,
+        'reviewText': reviewText,
+        'timestamp': FieldValue.serverTimestamp(),
+        'productName': item['name'],
+        'imageUrl': item['imageUrl'],
+      });
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã gửi đánh giá thành công.')),
+    );
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const Mainpage()),
+      (route) => false,
+    );
+  }
+
+  Widget _buildStarRating(String productId) {
+    return Row(
+      children: List.generate(5, (index) {
+        return IconButton(
+          icon: Icon(
+            index < _ratings[productId]! ? Icons.star : Icons.star_border,
+            color: Colors.amber,
+          ),
+          onPressed: () {
+            setState(() {
+              _ratings[productId] = index + 1.0;
+            });
+          },
+        );
+      }),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Đánh giá đơn hàng'),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        title: const Text('Đánh giá đơn hàng'),
+        backgroundColor: AppColors.mainColor,
       ),
       body: Padding(
         padding: EdgeInsets.all(Dimensions.height15),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildOrderInfoCard(),
-            SizedBox(height: Dimensions.height15),
-            _buildPaymentDetailsBox(), // Add the payment details box here
-            SizedBox(height: Dimensions.height15),
-            _buildOrderStatus(),
-            SizedBox(height: Dimensions.height15),
-            _buildReviewSection(),
-            Spacer(),
-            _buildReturnButton(context),
-            SizedBox(height: Dimensions.height45),
-
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrderInfoCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimensions.radius15 - 3)),
-      child: Padding(
-        padding: EdgeInsets.all(Dimensions.width15),
-        child: Row(
-          children: [
-            Image.asset(
-              'assets/images/caphesuadua.jpeg',
-              width: Dimensions.pageViewTextContainers,
-              height: Dimensions.height200 - 140,
-              fit: BoxFit.cover,
-            ),
-            SizedBox(width: Dimensions.width15),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(itemName, style: TextStyle(fontSize: Dimensions.font18, fontFamily: 'RobotoCondensed')),
-                  Text('Size $itemSize', style: TextStyle(fontSize: Dimensions.font18, fontFamily: 'RobotoCondensed')),
-                  Text('Số lượng: $quantity', style: TextStyle(fontSize: Dimensions.font18, fontFamily: 'RobotoCondensed')),
-                ],
+              child: ListView.builder(
+                itemCount: widget.items.length,
+                itemBuilder: (_, index) {
+                  final item = widget.items[index];
+                  final productId = item['productId'];
+                  return Card(
+                    margin: EdgeInsets.only(bottom: Dimensions.height10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Dimensions.radius15),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(Dimensions.height15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Image.network(
+                                item['imageUrl'],
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              ),
+                              SizedBox(width: Dimensions.width10),
+                              Expanded(
+                                child: Text(
+                                  item['name'],
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: Dimensions.height10),
+                          _buildStarRating(productId),
+                          TextField(
+                            controller: _reviewControllers[productId],
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              hintText: 'Viết nhận xét ở đây...',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-  Widget _buildPaymentDetailsBox() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimensions.radius15 - 3)),
-      child: Padding(
-        padding: EdgeInsets.all(Dimensions.width15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Chi tiết thanh toán',
-              style: TextStyle(
-                fontFamily: 'RobotoCondensed',
-                fontSize: Dimensions.font15,
-                fontWeight: FontWeight.bold,
+            SizedBox(height: Dimensions.height15),
+            ElevatedButton(
+              onPressed: _submitAllReviews,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.veriPeri,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text(
+                "Gửi đánh giá",
+                style: TextStyle(color: Colors.white),
               ),
             ),
-            SizedBox(height: Dimensions.height10),
-            _buildCostDetail('Giá thành', '40,000đ'),
-            _buildCostDetail('Phí giao hàng (voucher)', '15,000đ'),
-            _buildCostDetail('Tổng thành tiền', '55,000'),
+            SizedBox(height: Dimensions.height30),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildOrderStatus() {
-    return Row(
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: Dimensions.width10),
-          child: _buildStatusCircle('Xuất phát', true),
-        ),
-        Expanded(
-          child: Align(
-            alignment: Alignment.center,
-            child: Divider(thickness: 2.0, color: Colors.grey),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: Dimensions.width10),
-          child: _buildStatusCircle('Đang giao', true),
-        ),
-        Expanded(
-          child: Align(
-            alignment: Alignment.center,
-            child: Divider(thickness: 2.0, color: Colors.grey),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: Dimensions.width10),
-          child: _buildStatusCircle('Đã tới', true),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusCircle(String text, bool isActive) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 15,
-          backgroundColor: isActive ? Colors.green : Colors.grey,
-        ),
-        SizedBox(height: 8.0),
-        Text(text, style: TextStyle(fontSize: 16)),
-      ],
-    );
-  }
-
-  Widget _buildReviewSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Đừng quên đánh giá bạn nhé', style: TextStyle(fontSize: Dimensions.font18, fontFamily: 'RobotoCondensed')),
-        SizedBox(height: Dimensions.height10),
-        TextField(
-          style: TextStyle(fontFamily: 'RobotoCondensed'),
-          maxLines: 3,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Nhận xét ...',
-          ),
-        ),
-        SizedBox(height: Dimensions.height30),
-        Center(
-          child: Image.asset(
-            'assets/images/rating.png', // replace with your rating image asset
-            width: Dimensions.listViewImgSize,
-            height: Dimensions.height200 - 140,
-            fit: BoxFit.cover,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReturnButton(BuildContext context) {
-    return Center(
-      child:ElevatedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => Mainpage()),
-          );
-        },
-        child: Text('Xác nhận', style: TextStyle(color: Colors.white, fontFamily: 'RobotoCondensed', fontWeight: FontWeight.bold, fontSize: Dimensions.font18)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.veriPeri,
-          minimumSize: Size(double.infinity, 50),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCostDetail(String title, String cost) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: Dimensions.height5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: Dimensions.font15)),
-          Text(cost, style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: Dimensions.font15)),
-        ],
       ),
     );
   }

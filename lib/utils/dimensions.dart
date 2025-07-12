@@ -35,6 +35,8 @@ class Dimensions{
   static double font18 = screenHeight/47.33;
   static double font15 = screenHeight/56.8;
   static double font26 = screenHeight/32.769;
+  static const double font14 = 14.0;
+  static double font16 = screenHeight / 52.75; // hoặc bất kỳ tỉ lệ phù hợp
 //Radius
   static double radius5 = screenHeight/170.4;
   static double radius15 = screenHeight/56.8;

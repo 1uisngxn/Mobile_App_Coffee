@@ -1,14 +1,13 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:project_mobile/utils/dimensions.dart';
 
 class SocialButton extends StatelessWidget {
   final IconData icon;
   final String text;
   final Color color;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed; // Cho phép null để disable
 
-  SocialButton({
+  const SocialButton({
+    super.key,
     required this.icon,
     required this.text,
     required this.color,
@@ -18,15 +17,15 @@ class SocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
-      onPressed: onPressed,
+      onPressed: onPressed, // null sẽ disable nút
       icon: Icon(icon, color: Colors.white),
-      label: Text(text,style: TextStyle(fontFamily: 'RobotoCondensed',fontSize: Dimensions.font18),),
+      label: Text(text,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
-        foregroundColor: Colors.white, backgroundColor: color,
-        padding: EdgeInsets.symmetric(horizontal: Dimensions.height20, vertical: Dimensions.width15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius5),
-        ),
+        backgroundColor: color,
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        disabledBackgroundColor: color.withOpacity(0.5), // khi disabled
       ),
     );
   }

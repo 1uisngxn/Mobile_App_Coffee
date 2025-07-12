@@ -1,120 +1,131 @@
-import 'package:dots_indicator/dots_indicator.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:project_mobile/data/banner/banner_data.dart';
-import 'package:project_mobile/data/product/item/product_data.dart';
+import 'package:project_mobile/data/product/item/product_model.dart';
+import 'package:project_mobile/pages/coffee/detail_coffee.dart';
+import 'package:project_mobile/service/product/product_service.dart';
 import 'package:project_mobile/utils/colors.dart';
 import 'package:project_mobile/utils/dimensions.dart';
-//import 'package:project_mobile/widgets/app_column.dart';
 import 'package:project_mobile/widgets/big_text.dart';
-import 'package:project_mobile/widgets/icon_and_text_widget.dart';
-import 'package:project_mobile/widgets/normal_text.dart';
 import 'package:project_mobile/widgets/small_text.dart';
 
-import '../../coffee/detail_coffee.dart';
 class SearchPage extends StatefulWidget {
-
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<SearchPage> {
-  PageController pageController = PageController(viewportFraction: 0.85);
-  var _currPageValue = 0.0;
+  final ProductService _productService = ProductService();
+  List<ProductModel> _allProducts = [];
+  List<ProductModel> _filteredProducts = [];
+  TextEditingController _searchController = TextEditingController();
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    pageController.addListener(() {
-      setState(() {
-        _currPageValue = pageController.page!;
-      });
-    });
+    fetchProducts();
+    _searchController.addListener(_onSearchChanged);
   }
+
   @override
   void dispose() {
-    //TODO: implement dispose
-    pageController.dispose();
-    //super.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
+
+  void _onSearchChanged() {
+    String query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredProducts = _allProducts
+          .where((product) =>
+              product.name.toLowerCase().contains(query) ||
+              product.shortDescription.toLowerCase().contains(query))
+          .toList();
+    });
+  }
+
+  Future<void> fetchProducts() async {
+    try {
+      List<ProductModel> products = await _productService.getAllProducts();
+      setState(() {
+        _allProducts = products;
+        _filteredProducts = products;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Lỗi khi lấy sản phẩm: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Align(
-          alignment: Alignment.center,
-          child: Text(
-            "Tìm kiếm",
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
+        title: Text("Tìm kiếm", style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.mainColor,
       ),
-
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              BigText(text:
-                'Tìm Kiếm',
-                  color: Color(0xFF6667AB), // Màu Very Peri
-                  size: 30, // Kích thước lớn hơn
-                  align: TextAlign.left,
-                  fontWeight: FontWeight.w700
-                ),
-              SizedBox(height: Dimensions.height10),
-              TextField(
-                decoration: InputDecoration(
-                  prefixIcon: Icon(Icons.search, color: Colors.black),
-                  hintText: 'Tìm món ngon ở đây.....',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(Dimensions.radius5),
-                    borderSide: BorderSide(color: Colors.black),
-                  ),
+      body: Padding(
+        padding: EdgeInsets.all(Dimensions.height15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            BigText(
+              text: 'Tìm Kiếm',
+              color: AppColors.veriPeri,
+              size: 30,
+              fontWeight: FontWeight.bold,
+            ),
+            SizedBox(height: Dimensions.height10),
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search, color: Colors.black),
+                hintText: 'Tìm món ngon ở đây...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(Dimensions.radius5),
+                  borderSide: BorderSide(color: Colors.black),
                 ),
               ),
-              SizedBox(height: Dimensions.height10),
-              Text(
-                'Được Đề Xuất',
-                style: TextStyle(fontFamily: 'RobotoCondensed',fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              SizedBox(height: Dimensions.height20),
-              Container(
+            ),
+            SizedBox(height: Dimensions.height20),
+            if (_isLoading)
+              Center(child: CircularProgressIndicator())
+            else if (_filteredProducts.isEmpty)
+              Center(child: Text("Không tìm thấy sản phẩm nào."))
+            else
+              Expanded(
                 child: GridView.builder(
-                  physics: NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
+                  padding: EdgeInsets.only(top: Dimensions.height10),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: Dimensions.width10,
                     mainAxisSpacing: Dimensions.height10,
                     childAspectRatio: 0.8,
                   ),
-                  itemCount: coffeeList.length,
+                  itemCount: _filteredProducts.length,
                   itemBuilder: (context, index) {
+                    final product = _filteredProducts[index];
                     return GestureDetector(
                       onTap: () {
-                        // Navigate to detail screen when image is tapped
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => CoffeeDetailScreen(coffeeItem: coffeeList[index]),
+                            builder: (_) => CoffeeDetailScreen(coffeeItem: product),
                           ),
                         );
                       },
-                      child:Container(
-                        margin: EdgeInsets.only(left:Dimensions.width20,right:Dimensions.width20),
-                        padding: EdgeInsets.all(Dimensions.width20),
-                        height: Dimensions.pageViewContainers,
+                      child: Container(
+                        padding: EdgeInsets.all(Dimensions.width10),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(Dimensions.radius20),
                           color: Colors.white,
+                          borderRadius: BorderRadius.circular(Dimensions.radius15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.withOpacity(0.5),
-                              spreadRadius: 1,
-                              blurRadius: 3,
-                              offset: Offset(0, 2),
+                              color: Colors.grey.withOpacity(0.3),
+                              blurRadius: 6,
+                              offset: Offset(0, 3),
                             ),
                           ],
                         ),
@@ -124,45 +135,33 @@ class _SearchPageState extends State<SearchPage> {
                             Container(
                               height: Dimensions.listViewImgSize,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(Dimensions.radius20),
-                                  topRight: Radius.circular(Dimensions.radius20),
-                                ),
+                                borderRadius: BorderRadius.circular(Dimensions.radius15),
                                 image: DecorationImage(
+                                  image: NetworkImage(product.imageUrl),
                                   fit: BoxFit.cover,
-                                  image: AssetImage(coffeeList[index].imageUrl),
                                 ),
                               ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(height: Dimensions.height5),
-                                BigText(text: coffeeList[index].name),
-                                SizedBox(height: Dimensions.height5),
-                                SmallText(text: coffeeList[index].short_description),
-                                SizedBox(height: Dimensions.height5),
-                                SizedBox(height: Dimensions.height5),
-                                Text(
-                                  coffeeList[index].price ?? 'N/A',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: Dimensions.font15,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.veriPeri,
-                                  ),
-                                ),
-                              ],
+                            SizedBox(height: Dimensions.height10),
+                            BigText(text: product.name, size: Dimensions.font16),
+                            SmallText(text: product.shortDescription),
+                            SizedBox(height: Dimensions.height10),
+                            Text(
+                              '${product.price} đ',
+                              style: TextStyle(
+                                color: AppColors.veriPeri,
+                                fontSize: Dimensions.font15,
+                                fontWeight: FontWeight.bold,
+                              ),
                             )
-
                           ],
                         ),
-                      ),);
+                      ),
+                    );
                   },
                 ),
-              )
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

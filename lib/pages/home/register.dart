@@ -1,10 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:project_mobile/pages/home/login.dart';
 import 'package:project_mobile/utils/colors.dart';
 import 'package:project_mobile/utils/dimensions.dart';
 import 'package:project_mobile/widgets/custom_text_field.dart';
-import 'package:project_mobile/widgets/social_button.dart';
-import 'package:flutter/src/services/asset_manifest.dart' as flutter_asset;
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -15,210 +15,202 @@ class Register extends StatefulWidget {
 
 class RegisterState extends State<Register> {
   bool _check = false;
+
   final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmpassController = TextEditingController();
 
+  bool _isLoading = false;
+
+  void _handleRegister() async {
+    final email = _emailController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmpassController.text;
+
+    if (email.isEmpty || username.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showSnackbar("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showSnackbar("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    if (!_check) {
+      _showSnackbar("Bạn phải đồng ý với điều khoản sử dụng");
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Lưu vào Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'uid': userCredential.user!.uid,
+        'name': username,
+        'email': email,
+        'address': '',
+        'phoneNumber': '',
+        'avatarUrl': null,
+        'role': 'user', // mặc định
+      });
+
+      _showSnackbar("Đăng ký thành công. Vui lòng đăng nhập.");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      _showSnackbar(e.message ?? "Đăng ký thất bại");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Padding(
+      resizeToAvoidBottomInset: true,
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(Dimensions.width40),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(height: Dimensions.height60),
-              Container(
-                width: double.maxFinite,
-                height: Dimensions.height200-80, // Adjust height as needed
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
-                    image: AssetImage("assets/images/logo.png"),
-                  ),
+        child: Column(
+          children: [
+            SizedBox(height: Dimensions.height60),
+            Image.asset(
+              "assets/images/logocf.jpg",
+              height: Dimensions.height200 + 50,
+              fit: BoxFit.cover,
+              width: double.infinity,
+            ),
+            SizedBox(height: Dimensions.height15),
+            CustomTextField(controller: _emailController, hintText: 'Email', obscureText: false),
+            SizedBox(height: Dimensions.height10),
+            CustomTextField(controller: _usernameController, hintText: 'Tên đăng nhập', obscureText: false),
+            SizedBox(height: Dimensions.height10),
+            CustomTextField(controller: _passwordController, hintText: 'Mật khẩu', obscureText: true),
+            SizedBox(height: Dimensions.height10),
+            CustomTextField(controller: _confirmpassController, hintText: 'Xác nhận mật khẩu', obscureText: true),
+            SizedBox(height: Dimensions.height15),
+            Row(
+              children: [
+                Checkbox(
+                  value: _check,
+                  onChanged: (value) {
+                    setState(() {
+                      _check = value!;
+                    });
+                  },
                 ),
-              ),
-              SizedBox(height: Dimensions.height10),
-              Text(
-                'Đăng ký để nhận được những khuyến mãi và ưu đãi hấp dẫn từ chúng tôi',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: Dimensions.font15, color: Colors.grey[700],fontFamily: 'RobotoCondensed'),
-                ),
-              //SizedBox(height: Dimensions.height10),
-              SizedBox(
-                width: Dimensions.pageView,
-                child: SocialButton(
-                  icon: Icons.facebook,
-                  text: 'Đăng ký bằng Facebook',
-                  color: Color.fromRGBO(60, 90, 153, 1),
-                  onPressed: () {},
-                ),
-              ),
-              SizedBox(height: Dimensions.height5),
-              SizedBox(
-                width: Dimensions.pageView,
-                child: SocialButton(
-                  icon: Icons.email,
-                  text: 'Đăng ký bằng Google',
-                  color: Colors.red,
-                  onPressed: () {},
-                ),
-              ),
-              SizedBox(height: Dimensions.height5),
-              SizedBox(
-                width: Dimensions.pageView,
-                child: SocialButton(
-                  icon: Icons.apple,
-                  text: 'Đăng ký bằng Apple',
-                  color: Colors.black,
-                  onPressed: () {},
-                ),
-              ),
-              SizedBox(height: Dimensions.height5),
-              Container( width: Dimensions.pageView,
-                child:Row(
-                children: [
-                  Flexible(
-                    flex: 1,
-                    child: Divider(thickness: 1.0, color: Colors.grey,),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: Dimensions.height10),
-                    child: Text(
-                      'hoặc',
-                      style: TextStyle(color: Colors.grey),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      text: 'Tôi đã đọc và đồng ý với ',
+                      style: const TextStyle(color: Colors.black, fontFamily: 'RobotoCondensed'),
+                      children: [
+                        TextSpan(
+                          text: 'Điều khoản Dịch vụ',
+                          style: TextStyle(
+                            decoration: TextDecoration.underline,
+                            color: AppColors.veriPeri,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const TextSpan(text: ' & '),
+                        TextSpan(
+                          text: 'Chính Sách Bảo Mật',
+                          style: TextStyle(
+                            decoration: TextDecoration.underline,
+                            color: AppColors.veriPeri,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const TextSpan(text: ' của MoonBook'),
+                      ],
                     ),
                   ),
-                  Flexible(
-                    flex: 1,
-                    child: Divider(thickness: 1.0, color: Colors.grey),
-                  ),
-                ],
-              ),
-              ),
-
-              Container(
-                width: Dimensions.pageView,
-                child: Column(
-
-                  children: [
-                    CustomTextField(
-                      controller: _emailController,
-                      hintText: 'Email',
-                      obscureText: false,
-                    ),
-                    //Divider(thickness: 1.0, color: Colors.grey),
-                    CustomTextField(
-                      controller: _usernameController,
-                      hintText: 'Tên đăng nhập',
-                      obscureText: false,
-                    ),
-                    //Divider(thickness: 1.0, color: Colors.grey),
-                    CustomTextField(
-                      controller: _passwordController,
-                      hintText: 'Mật khẩu',
-                      obscureText: true,
-                    ),
-                    //Divider(thickness: 1.0, color: Colors.grey),
-                    CustomTextField(
-                      controller: _confirmpassController,
-                      hintText: 'Xác nhận mật khẩu',
-                      obscureText: true,
-                    ),
-                  ],
                 ),
-              ),
-              //Divider(thickness: 1.0, color: Colors.grey),
-              //SizedBox(height: Dimensions.height10),
-              Row(
-                children: [
-                  Checkbox(
-                    value: _check,
-                    onChanged: (value){
-                      setState(() {
-                        _check = value!;
-                      });
-                    },
+              ],
+            ),
+            SizedBox(height: Dimensions.height10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleRegister,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.veriPeri,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.height20,
+                    vertical: Dimensions.width15,
                   ),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        text: 'Tôi đã đọc và đồng ý với ',
-                        style:  TextStyle(color: Colors.black,fontFamily: 'RobotoCondensed',/*fontSize: Dimensions.font18*/),
-                        children: [
-                          TextSpan(
-                            text: 'Điều khoản Dịch vụ',
-                            style:TextStyle(
-                              fontFamily: 'RobotoCondensed',
-                                decoration: TextDecoration.underline,
-                                color: AppColors.veriPeri, // Thay AppColors.veriPeri thành màu sắc tương ứng
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          TextSpan(text: ' & '),
-                          TextSpan(
-                            text: 'Chính Sách Bảo Mật',
-                            style:TextStyle(
-                              fontFamily: 'RobotoCondensed',
-                                decoration: TextDecoration.underline,
-                                color: AppColors.veriPeri, // Thay AppColors.veriPeri thành màu sắc tương ứng
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          TextSpan(
-                            text: ' của MoonBook',
-                            style: TextStyle(color: Colors.black,fontFamily: 'RobotoCondensed',),
-                            ),
-                        ],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Dimensions.radius20),
+                  ),
+                  minimumSize: Size(double.infinity, Dimensions.font26),
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        'Đăng Ký',
+                        style: TextStyle(
+                          fontSize: Dimensions.font20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'RobotoCondensed',
+                        ),
                       ),
-                    ),
-                  ),
-                ],
               ),
-              //SizedBox(height: Dimensions.height10),
-              SizedBox(
-                width:  Dimensions.pageView,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.veriPeri,
-                    padding: EdgeInsets.symmetric(horizontal: Dimensions.height20, vertical: Dimensions.width15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Dimensions.radius20),
-                    ),
-                    minimumSize: Size(double.infinity, Dimensions.font26),
-                  ),
-                  child: Text(
-                    'Đăng Ký',
-                    style: TextStyle(fontSize: Dimensions.font20,fontWeight: FontWeight.bold, color: Colors.white,fontFamily: 'RobotoCondensed'),
+            ),
+            SizedBox(height: Dimensions.height15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Đã có tài khoản?',
+                  style: TextStyle(
+                    fontFamily: 'RobotoCondensed',
+                    fontSize: Dimensions.font15,
                   ),
                 ),
-              ),
-              //SizedBox(height: Dimensions.height5),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Đã có tài khoản?',style: TextStyle(fontFamily:'RobotoCondensed',fontSize: Dimensions.font15 ),),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => Login()),
-                      );
-                    },
-                    child: Text('Đăng nhập',
-                    style: TextStyle(fontFamily: 'RobotoCondensed',
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                    );
+                  },
+                  child: Text(
+                    'Đăng nhập',
+                    style: TextStyle(
+                      fontFamily: 'RobotoCondensed',
                       color: AppColors.veriPeri,
-                      fontWeight: FontWeight.bold,fontSize: Dimensions.font15,decoration: TextDecoration.underline,),),
+                      fontWeight: FontWeight.bold,
+                      fontSize: Dimensions.font15,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

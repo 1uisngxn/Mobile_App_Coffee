@@ -1,18 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:project_mobile/data/product/item/product_model.dart';
+import 'package:project_mobile/service/cart/cart_service.dart';
 import 'package:project_mobile/utils/colors.dart';
 import 'package:project_mobile/utils/dimensions.dart';
 import 'package:project_mobile/widgets/app_icons.dart';
 import 'package:project_mobile/widgets/big_text.dart';
 import 'package:project_mobile/widgets/expandable.dart';
-import 'package:project_mobile/widgets/icon_and_text_widget.dart';
-import 'package:project_mobile/widgets/normal_text.dart';
-
 
 class CoffeeDetailScreen extends StatefulWidget {
-  final Coffee coffeeItem;
+  final ProductModel coffeeItem;
 
-  CoffeeDetailScreen({required this.coffeeItem});
+  const CoffeeDetailScreen({super.key, required this.coffeeItem});
 
   @override
   State<CoffeeDetailScreen> createState() => _CoffeeDetailScreenState();
@@ -20,6 +19,14 @@ class CoffeeDetailScreen extends StatefulWidget {
 
 class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
   int quantity = 1;
+  final CartService _cartService = CartService();
+
+  void _addToCart() async {
+    await _cartService.addToCart(widget.coffeeItem, quantity);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Đã thêm vào giỏ hàng")),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,124 +36,179 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
         slivers: [
           SliverAppBar(
             title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Spacer(),
                 AppIcons(
                   iconSize: Dimensions.iconSize24,
-                  iconColor:Colors.white,
-                  backgroundColor:AppColors.mainColor,
+                  iconColor: Colors.white,
+                  backgroundColor: AppColors.mainColor,
                   icon: Icons.favorite,
-                  onPressed: (){},
+                  onPressed: () {},
                 )
               ],
             ),
             bottom: PreferredSize(
               preferredSize: Size.fromHeight(Dimensions.height20),
               child: Container(
-                margin: EdgeInsets.only(left: Dimensions.width30,right: Dimensions.width20),
                 alignment: Alignment.center,
-                child: BigText(text:widget.coffeeItem.name,size:Dimensions.font20,color: AppColors.veriPeri,),
-                width: double.maxFinite,
-                padding: EdgeInsets.only(top:Dimensions.height10,bottom: Dimensions.height10),
+                padding: EdgeInsets.only(
+                    top: Dimensions.height10, bottom: Dimensions.height10),
                 decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular(Dimensions.radius20),
-                      topLeft: Radius.circular(Dimensions.radius20),
-                    )
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(Dimensions.radius20),
+                  ),
+                ),
+                child: BigText(
+                  text: widget.coffeeItem.name,
+                  size: Dimensions.font20,
+                  color: AppColors.veriPeri,
                 ),
               ),
             ),
-            pinned: true ,
+            pinned: true,
             backgroundColor: AppColors.mainColor2,
-            expandedHeight: Dimensions.height200+100,
+            expandedHeight: Dimensions.height200 + 100,
             flexibleSpace: FlexibleSpaceBar(
-              background: Image.asset(widget.coffeeItem.imageUrl,
-                width:double.maxFinite,
+              background: Image.network(
+                widget.coffeeItem.imageUrl,
+                width: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
           ),
-          SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  SizedBox(height: Dimensions.height10,),
-                  Container(
 
-                      child: ExpandableTextWidgets(text:widget.coffeeItem.description),
-                      margin: EdgeInsets.only(left: Dimensions.width30,right: Dimensions.width20)
-                  )
-                ],
-              )
-          )
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: EdgeInsets.only(
-              left: Dimensions.width30*2.5,
-              right: Dimensions.width30*2.5,
-              top: Dimensions.height10,
-              bottom: Dimensions.height10,
+          // Mô tả
+          SliverToBoxAdapter(
+            child: Container(
+              margin: EdgeInsets.symmetric(
+                  horizontal: Dimensions.width20, vertical: Dimensions.height10),
+              child: ExpandableTextWidgets(text: widget.coffeeItem.description),
             ),
           ),
-          Container(
-            height: Dimensions.bottomHeightBar,
-            padding: EdgeInsets.only(top: Dimensions.height10,bottom: Dimensions.height10,left: Dimensions.width20,right: Dimensions.width40),
-            decoration: BoxDecoration(
-                color: AppColors.buttonBackgroundColor,
-                borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(Dimensions.radius20*2),
-                    topRight: Radius.circular(Dimensions.radius20*2)
-                )
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  child:Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Define the action when the button is pressed
-                      },
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white, backgroundColor: AppColors.mainColor, // Text and icon color
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.shopping_cart),
-                          SizedBox(width: Dimensions.width10), // Add spacing between the icon and the text
-                          NormalText(text: 'Thêm vào giỏ hàng',color: AppColors.textColor_white,),
-                        ],
-                      ),
+
+          // Đánh giá
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(),
+                  Text(
+                    "Đánh giá sản phẩm",
+                    style: TextStyle(
+                      fontSize: Dimensions.font18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Dimensions.radius20),
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.only(
-                    top: Dimensions.height10,
-                    bottom: Dimensions.height10,
-                    left: Dimensions.width30,
-                    right: Dimensions.width30,
-                  ),
-                  child: BigText(text: 'Giá: ${widget.coffeeItem.price}', color: Colors.white,) ,
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Dimensions.radius20),
-                      color: AppColors.mainColor
-                  ),
-                )
-              ],
+                  const SizedBox(height: 10),
+                  _buildReviews(),
+                ],
+              ),
             ),
-          ) ,
+          ),
         ],
       ),
+
+      // Bottom
+      bottomNavigationBar: Container(
+        height: Dimensions.bottomHeightBar + 10,
+        padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+        decoration: BoxDecoration(
+          color: AppColors.buttonBackgroundColor,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(Dimensions.radius20 * 2),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Tăng giảm số lượng
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      if (quantity > 1) quantity--;
+                    });
+                  },
+                  icon: const Icon(Icons.remove),
+                ),
+                Text(
+                  '$quantity',
+                  style: TextStyle(
+                    fontSize: Dimensions.font18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      quantity++;
+                    });
+                  },
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+
+            // Thêm vào giỏ hàng
+            ElevatedButton.icon(
+              onPressed: _addToCart,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.mainColor,
+                padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width20, vertical: Dimensions.height10),
+              ),
+              icon: const Icon(Icons.shopping_cart),
+              label: const Text('Thêm vào giỏ hàng'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviews() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('reviews')
+          .where('productId', isEqualTo: widget.coffeeItem.id)
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Text("Chưa có đánh giá nào.");
+        }
+
+        final reviews = snapshot.data!.docs;
+
+        return Column(
+          children: reviews.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Row(
+                children: List.generate(5, (index) {
+                  return Icon(
+                    index < (data['rating'] ?? 0)
+                        ? Icons.star
+                        : Icons.star_border,
+                    color: Colors.amber,
+                    size: 20,
+                  );
+                }),
+              ),
+              subtitle: Text(data['reviewText'] ?? ''),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }

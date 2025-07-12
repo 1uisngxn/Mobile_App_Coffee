@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "233409468768",
+    "project_id": "amazing-coffee-ebdea",
+    "storage_bucket": "amazing-coffee-ebdea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:233409468768:android:83ea3796039f1ba6bae605",
+        "android_client_info": {
+          "package_name": "com.example.project_mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "233409468768-khihr68qpogks3fpq1f36ot7p70iu7a9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.project_mobile",
+            "certificate_hash": "d7024d4be270f323a63fed32d07fac9ce9487e32"
+          }
+        },
+        {
+          "client_id": "233409468768-3l470f2q0roch5mvedbjmmh8564pm5dd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJOX7TfN1TleJRX4-AAHmxXrU4lYc55mw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "233409468768-3l470f2q0roch5mvedbjmmh8564pm5dd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,176 +1,120 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:project_mobile/data/user/Customer/Customer_model.dart';
-import 'package:project_mobile/pages/home/payment/discount_page.dart';
-import 'package:project_mobile/pages/home/payment/payment_page_test.dart';
+import 'package:project_mobile/data/user/user_model.dart';
+import 'package:project_mobile/pages/home/payment/payment_page.dart';
+import 'package:project_mobile/service/cart/cart_service.dart';
 import 'package:project_mobile/utils/colors.dart';
 import 'package:project_mobile/utils/dimensions.dart';
+import 'package:project_mobile/widgets/big_text.dart';
 
-class CartPage extends StatefulWidget {
-  @override
-  _CartPageState createState() => _CartPageState();
-}
+class CartPage extends StatelessWidget {
+  final CartService _cartService = CartService();
 
-class _CartPageState extends State<CartPage> {
-  double discountPercent = 0.0;
-  bool discountApplied = false;
-  int quantity = 2;
-  User user = User(
-    name: 'Đỗ Như Quỳnh',
-    address: '34 Sư vạn hạnh, quận 10, HCM',
-    phoneNumber: '0962471157',
-  );
+  CartPage({super.key});
 
-  String calculateTotalPrice() {
-    double totalPrice = 40000.0; // Giá thành sản phẩm
-    double deliveryFee = 15000.0; // Phí giao hàng
-
-    if (discountApplied) {
-      double discountAmount = (totalPrice * discountPercent / 100).toDouble();
-      totalPrice -= discountAmount;
+  double _calculateTotal(QuerySnapshot snapshot) {
+    double total = 0.0;
+    for (var doc in snapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final price = double.tryParse(data['price'].toString()) ?? 0.0;
+      final quantity = data['quantity'] ?? 1;
+      total += price * quantity;
     }
+    return total;
+  }
 
-    double totalAmount = totalPrice + deliveryFee;
+  Future<UserModel?> _getCurrentUserModel() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return null;
 
-    return totalAmount.toStringAsFixed(0) + 'đ';
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    if (!doc.exists) return null;
+
+    return UserModel.fromMap(doc.data()!);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Giỏ hàng',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text('Giỏ hàng'),
         backgroundColor: AppColors.mainColor,
       ),
-      body: Padding(
-        padding: EdgeInsets.all(Dimensions.width15),
-        child: Column(
-          children: [
-            Container(
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/images/caphesuadua.jpeg',
-                    width: Dimensions.pageViewTextContainers,
-                    height: Dimensions.height200 - 140,
-                    fit: BoxFit.cover,
-                  ),
-                  SizedBox(width: Dimensions.width15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Cà phê sữa dừa',
-                          style: TextStyle(
-                            fontFamily: 'RobotoCondensed',
-                            fontSize: Dimensions.font18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Size M',
-                          style: TextStyle(fontFamily: 'RobotoCondensed'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.remove),
-                        onPressed: () {
-                          setState(() {
-                            if (quantity > 1) quantity--;
-                          });
-                        },
-                      ),
-                      Text('$quantity'),
-                      IconButton(
-                        icon: Icon(Icons.add),
-                        onPressed: () {
-                          setState(() {
-                            quantity++;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: Dimensions.height20),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => DiscountPage()),
-                );
-              },
-              icon: Icon(Icons.local_offer),
-              label: Text(
-                'Thêm mã giảm giá',
-                style: TextStyle(fontFamily: 'RobotoCondensed'),
-              ),
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.green,
-                backgroundColor: Colors.white,
-                side: BorderSide(color: Colors.green),
-              ),
-            ),
-            SizedBox(height: Dimensions.height20),
-            Divider(),
-            _buildCostDetail('Giá thành', '40,000đ'),
-            _buildCostDetail('Phí giao hàng', '15,000đ'),
-            if (discountApplied)
-              _buildCostDetail('Giảm giá',
-                  '${(40000 * discountPercent / 100).toStringAsFixed(0)}đ'),
-            Divider(),
-            Text('Tổng thành tiền: ${calculateTotalPrice()}'),
-            Spacer(),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        PaymentPage1(user: user, quantity: quantity),
-                  ),
-                );
-              },
-              child: Text(
-                'Đặt hàng',
-                style: TextStyle(
-                  fontFamily: 'RobotoCondensed',
-                  color: AppColors.textColor_white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: Dimensions.font20,
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _cartService.getCartItems(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("Giỏ hàng trống."));
+          }
+
+          final cartItems = snapshot.data!.docs;
+
+          return Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  itemCount: cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = cartItems[index];
+                    final data = item.data() as Map<String, dynamic>;
+                    return ListTile(
+                      leading: Image.network(data['imageUrl'], width: 50, height: 50, fit: BoxFit.cover),
+                      title: Text(data['name']),
+                      subtitle: Text("Số lượng: ${data['quantity']}"),
+                      trailing: Text("${data['price']} đ"),
+                    );
+                  },
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.veriPeri,
-                minimumSize: Size(double.infinity, Dimensions.height45),
-              ),
-            ),
-            SizedBox(height: Dimensions.height20),
-          ],
-        ),
-      ),
-    );
-  }
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Dimensions.width20,
+                  vertical: Dimensions.height15,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    BigText(
+                      text: "Tổng: ${_calculateTotal(snapshot.data!).toStringAsFixed(0)} đ",
+                      color: AppColors.veriPeri,
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final user = await _getCurrentUserModel();
+                        if (user == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Không tìm thấy người dùng.")),
+                          );
+                          return;
+                        }
 
-  Widget _buildCostDetail(String title, String cost) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: Dimensions.height5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: Dimensions.font15)),
-          Text(cost, style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: Dimensions.font15)),
-        ],
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PaymentPage(user: user),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.mainColor,
+                      ),
+                      child: const Text("Thanh toán"),
+                    )
+                  ],
+                ),
+              )
+            ],
+          );
+        },
       ),
     );
   }
