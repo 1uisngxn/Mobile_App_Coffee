@@ -1,40 +1,38 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:project_mobile/utils/colors.dart';
 import 'package:project_mobile/utils/dimensions.dart';
-import 'package:project_mobile/widgets/big_text.dart';
-import 'package:project_mobile/widgets/icon_and_text_widget.dart';
-import 'package:project_mobile/widgets/small_text.dart';
 
 class BigText extends StatelessWidget {
-  final Color? color;
   final String text;
-  double size;
-  TextOverflow overflow;
-  final TextAlign align;
+  final Color color;
+  final double size;
   final FontWeight fontWeight;
+  final TextAlign align;
+  final TextOverflow overflow;
+  final int maxLines;
 
-  BigText({Key? key,
-    this.color = const Color(0xFF332d2b),
+  const BigText({
+    Key? key,
     required this.text,
+    this.color = const Color(0xFF332d2b),
     this.size = 0,
-  this.overflow = TextOverflow.ellipsis,
-     this.align = TextAlign.left,
-    this.fontWeight = FontWeight.bold
-  }): super(key:key);
+    this.fontWeight = FontWeight.bold,
+    this.align = TextAlign.left,
+    this.overflow = TextOverflow.ellipsis,
+    this.maxLines = 1,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Text(
       text,
-      maxLines: 1,
+      maxLines: maxLines,
       overflow: overflow,
       textAlign: align,
       style: TextStyle(
         fontFamily: 'RobotoCondensed',
         color: color,
-        fontSize:size==0?Dimensions.font18:size,
-          fontWeight: fontWeight
+        fontSize: size == 0 ? Dimensions.font18 : size,
+        fontWeight: fontWeight,
       ),
     );
   }

@@ -1,13 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:project_mobile/pages/home/BottomNavigationBar/message_page.dart';
-import 'package:project_mobile/pages/home/BottomNavigationBar/search.dart';
-import 'package:project_mobile/pages/home/HomePage/coffee_page_body.dart';
-import 'package:project_mobile/pages/home/HomePage/home_page.dart';
-import 'package:project_mobile/pages/home/MainPage/main_page.dart';
+import 'package:project_mobile/pages/home/BottomNavigationBar/edit_profile_page.dart';
+import 'package:project_mobile/pages/home/BottomNavigationBar/order_history_page.dart';
 import 'package:project_mobile/pages/home/login.dart';
 import 'package:project_mobile/utils/colors.dart';
-import 'package:project_mobile/utils/dimensions.dart';
-import 'package:project_mobile/widgets/menu_option.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -17,133 +14,165 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        setState(() {
+          userData = doc.data();
+          isLoading = false;
+        });
+      }
+    } else {
+      setState(() {
+        userData = null;
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    if (context.mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+    }
+  }
+
+  void _goToLogin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.mainColor,
-        title: Text('Cài đặt chung',style: TextStyle(color: AppColors.textColor_white),),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.info_outline),
-            onPressed: () {
-              // Info button action
-            },
-          ),
-        ],
+        title: const Text('Tài khoản'),
+        backgroundColor: AppColors.veriPeri,
+        foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.all(Dimensions.width15),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(Dimensions.radius15-5),
-              ),
-              margin: EdgeInsets.all(Dimensions.width15),
+      body: userData == null
+          ? Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircleAvatar(
-                    radius: Dimensions.radius30,
-                    backgroundColor: Colors.blue,
-                    child: Icon(Icons.person, size: Dimensions.font26, color: Colors.white),
+                  const CircleAvatar(
+                    radius: 50,
+                    backgroundImage:
+                        AssetImage('assets/images/meme.jpg'), // meme của bạn
                   ),
-                  SizedBox(height: Dimensions.height10),
-                  Text(
-                    'NHƯ QUỲNH',
-                    style: TextStyle(
-                      fontFamily: 'RobotoCondensed',
-                      fontWeight: FontWeight.bold,
-                      fontSize: Dimensions.font26,
-                    ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Bạn chưa đăng nhập',
+                    style: TextStyle(fontSize: 18),
                   ),
-                  Text(
-                    'Khách hàng',
-                    style: TextStyle(
-                      fontFamily: 'RobotoCondensed',
-                      color: Colors.orange,
-                      fontSize: Dimensions.font15,
-                    ),
-                  ),
-                  SizedBox(height: Dimensions.height20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Số dư tài khoản: 103,000đ',style: TextStyle(fontFamily: 'RobotoCondensed'),),
-                          Text('Điểm tích lũy: 1200 điểm',style: TextStyle(fontFamily: 'RobotoCondensed'),),
-                        ],
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.store),
-                        onPressed: () {
-                          // Store button action
-                        },
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: Dimensions.height20),
+                  const SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: () {
-                      // Upgrade button action
-                    },
+                    onPressed: _goToLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: EdgeInsets.symmetric(horizontal: Dimensions.width20, vertical: Dimensions.height10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Dimensions.radius20),
-                      ),
+                      backgroundColor: AppColors.veriPeri,
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                     ),
-                    child: Text(
-                      'Xếp hạng Vàng',
-                      style: TextStyle(
-                          fontFamily: 'RobotoCondensed',color: Colors.white),
-                    ),
+                    child: const Text("Đăng nhập", style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ),
-            ),
-            MenuOption(onPressed: (){},text: 'Đánh giá đơn hàng'),
-            MenuOption(onPressed: (){},text: 'Lịch sử đặt hàng'),
-            MenuOption(onPressed: (){},text: 'Đơn hàng đang giao'),
-            MenuOption(
-              text: 'ĐĂNG XUẤT',
-              color: Colors.red,
-              textColor: Colors.white,
-              onPressed: () {
-                  Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                  );
+            )
+          : ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                // Avatar + tên
+                Center(
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundImage: userData!['avatarUrl'] != null
+                            ? NetworkImage(userData!['avatarUrl'])
+                            : const AssetImage('assets/images/default_avatar.jpg')
+                                as ImageProvider,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        userData!['name'] ?? '',
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      Text(userData!['email'] ?? '',
+                          style: const TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Thông tin
+                ListTile(
+                  leading: const Icon(Icons.phone),
+                  title: const Text("Số điện thoại"),
+                  subtitle: Text(userData!['phoneNumber'] ?? 'Chưa cập nhật'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.home),
+                  title: const Text("Địa chỉ"),
+                  subtitle: Text(userData!['address'] ?? 'Chưa cập nhật'),
+                ),
+
+                const Divider(),
+
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text("Chỉnh sửa thông tin cá nhân"),
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EditProfilePage(userData: userData!),
+                      ),
+                    );
+
+                    if (result == true) {
+                      fetchUserData();
+                    }
                   },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text("Lịch sử đơn hàng"),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const OrderHistoryPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text("Đăng xuất"),
+                  onTap: _logout,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-     /* bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.category_outlined),
-            label: 'Category',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'Product',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color.fromARGB(255, 11, 7, 233),
-        onTap: _onItemTapped,
-      ),*/
     );
   }
 }
-

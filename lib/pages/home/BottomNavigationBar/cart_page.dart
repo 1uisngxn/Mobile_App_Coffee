@@ -40,6 +40,7 @@ class CartPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Giỏ hàng'),
         backgroundColor: AppColors.mainColor,
+        centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _cartService.getCartItems(),
@@ -57,16 +58,55 @@ class CartPage extends StatelessWidget {
           return Column(
             children: [
               Expanded(
-                child: ListView.builder(
+                child: ListView.separated(
                   itemCount: cartItems.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = cartItems[index];
                     final data = item.data() as Map<String, dynamic>;
                     return ListTile(
-                      leading: Image.network(data['imageUrl'], width: 50, height: 50, fit: BoxFit.cover),
-                      title: Text(data['name']),
-                      subtitle: Text("Số lượng: ${data['quantity']}"),
-                      trailing: Text("${data['price']} đ"),
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          data['imageUrl'],
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported),
+                        ),
+                      ),
+                      title: Text(
+                        data['name'],
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: () {
+                              if ((data['quantity'] ?? 1) > 1) {
+                                _cartService.updateCartItemQuantity(item.id, (data['quantity'] - 1));
+                              }
+                            },
+                          ),
+                          Text('${data['quantity']}', style: const TextStyle(fontSize: 14)),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: () {
+                              _cartService.updateCartItemQuantity(item.id, (data['quantity'] + 1));
+                            },
+                          ),
+                          const SizedBox(width: 10),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            onPressed: () => _cartService.removeCartItem(item.id),
+                          )
+                        ],
+                      ),
+                      trailing: Text(
+                        "${data['price']} đ",
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
                     );
                   },
                 ),
@@ -79,15 +119,30 @@ class CartPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border(top: BorderSide(color: Colors.grey.shade300)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    BigText(
-                      text: "Tổng: ${_calculateTotal(snapshot.data!).toStringAsFixed(0)} đ",
-                      color: AppColors.veriPeri,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade200,
+                      offset: const Offset(0, -2),
+                      blurRadius: 6,
                     ),
-                    ElevatedButton(
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        BigText(
+                          text: "Tổng: ${_calculateTotal(snapshot.data!).toStringAsFixed(0)} đ",
+                          color: AppColors.veriPeri,
+                          size: Dimensions.font18,
+                        ),
+                        const Text("(Đã bao gồm VAT)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
                       onPressed: () async {
                         final user = await _getCurrentUserModel();
                         if (user == null) {
@@ -106,9 +161,15 @@ class CartPage extends StatelessWidget {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.mainColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text("Thanh toán"),
-                    )
+                      icon: const Icon(Icons.payment),
+                      label: const Text(
+                        "Thanh toán",
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                      ),
+                    ),
                   ],
                 ),
               )

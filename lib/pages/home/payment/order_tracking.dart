@@ -1,134 +1,112 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:project_mobile/pages/home/payment/order_review.dart';
-import 'package:project_mobile/utils/colors.dart';
-import 'package:project_mobile/utils/dimensions.dart';
+import 'package:intl/intl.dart';
+import 'package:project_mobile/pages/home/HomePage/home_page.dart';
+import 'package:project_mobile/pages/home/MainPage/main_page.dart';
 
-class OrderTrackingPage extends StatefulWidget {
+class OrderTrackingPage extends StatelessWidget {
+  final Map<String, dynamic> orderData;
   final String orderId;
-  final int quantity;
 
-  const OrderTrackingPage({required this.orderId, required this.quantity});
-
-  @override
-  State<OrderTrackingPage> createState() => _OrderTrackingPageState();
-}
-
-class _OrderTrackingPageState extends State<OrderTrackingPage> {
-  Map<String, dynamic>? orderData;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOrderData();
-  }
-
-  Future<void> _loadOrderData() async {
-    final doc = await FirebaseFirestore.instance.collection('orders').doc(widget.orderId).get();
-    if (doc.exists) {
-      setState(() {
-        orderData = doc.data();
-      });
-    }
-  }
+  const OrderTrackingPage({
+    Key? key,
+    required this.orderData,
+    required this.orderId,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    if (orderData == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+    // Xử lý ngày đặt
+    final createdAtRaw = orderData['createdAt'];
+    DateTime? createdAt;
+    if (createdAtRaw is Timestamp) {
+      createdAt = createdAtRaw.toDate();
     }
 
+    // Format ngày đặt
+    String formattedDate = createdAt != null
+        ? DateFormat('dd/MM/yyyy – HH:mm').format(createdAt)
+        : 'Đang cập nhật...';
+
+    final status = orderData['status'] ?? 'Đang xử lý';
+    final totalPrice = (orderData['totalPrice'] ?? 0).toDouble();
+
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Theo dõi đơn hàng'),
-        backgroundColor: AppColors.mainColor,
+        backgroundColor: Colors.brown[700],
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: Padding(
-        padding: EdgeInsets.all(Dimensions.height15),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildOrderStatus(),
-            SizedBox(height: Dimensions.height20),
-            Text('Thông tin sản phẩm', style: TextStyle(fontWeight: FontWeight.bold, fontSize: Dimensions.font16)),
-            SizedBox(height: Dimensions.height10),
-            ...List.generate((orderData!['items'] as List).length, (index) {
-              final item = orderData!['items'][index];
-              return _buildProductCard(item);
-            }),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OrderReviewPage(
-                      items: (orderData!['items'] as List).map((e) => Map<String, dynamic>.from(e)).toList(),
-                      shippingFee: orderData!['shippingFee'].toDouble(),
-                      totalPrice: orderData!['totalPrice'].toDouble(),
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.veriPeri,
-                minimumSize: const Size(double.infinity, 50),
+            const SizedBox(height: 10),
+            const Text(
+              '🎉 Đặt hàng thành công!',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
               ),
-              child: const Text('ĐÃ NHẬN HÀNG'),
             ),
+            const SizedBox(height: 20),
+            _buildInfoRow(Icons.receipt_long, 'Mã đơn hàng', orderId),
+            const SizedBox(height: 12),
+            _buildInfoRow(Icons.calendar_today, 'Ngày đặt', formattedDate),
+            const SizedBox(height: 12),
+            _buildInfoRow(Icons.local_shipping_outlined, 'Trạng thái', status),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              Icons.attach_money,
+              'Tổng tiền',
+              NumberFormat.currency(locale: 'vi_VN', symbol: '₫').format(totalPrice),
+            ),
+            const Spacer(),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const Mainpage()),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.home),
+                label: const Text('Quay lại trang chủ'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.brown[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOrderStatus() {
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        _buildStatusCircle('Xuất phát', true),
-        const Expanded(child: Divider(thickness: 2, color: Colors.grey)),
-        _buildStatusCircle('Đang giao', true),
-        const Expanded(child: Divider(thickness: 2, color: Colors.grey)),
-        _buildStatusCircle('Đã tới', false),
-      ],
-    );
-  }
-
-  Widget _buildStatusCircle(String text, bool isActive) {
-    return Column(
-      children: [
-        CircleAvatar(radius: 15, backgroundColor: isActive ? Colors.green : Colors.grey),
-        const SizedBox(height: 8),
-        Text(text),
-      ],
-    );
-  }
-
-  Widget _buildProductCard(Map<String, dynamic> item) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimensions.radius15)),
-      margin: EdgeInsets.only(bottom: Dimensions.height10),
-      child: Padding(
-        padding: EdgeInsets.all(Dimensions.height10),
-        child: Row(
-          children: [
-            Image.network(item['imageUrl'], width: 60, height: 60, fit: BoxFit.cover),
-            SizedBox(width: Dimensions.width10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item['name'], style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.bold)),
-                  Text('Số lượng: ${item['quantity']}'),
-                  Text('Giá: ${item['price']} đ'),
-                ],
-              ),
-            ),
-          ],
+        Icon(icon, color: Colors.brown),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            '$label: $value',
+            style: const TextStyle(fontSize: 15, color: Colors.black87),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

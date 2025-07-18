@@ -2,11 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:project_mobile/pages/admin/manage_orders_page.dart';
 import 'package:project_mobile/pages/admin/manage_products_page.dart';
 import 'package:project_mobile/pages/admin/manage_users_page.dart';
+import 'package:project_mobile/pages/admin/manage_voucher_page.dart';
+import 'package:project_mobile/pages/home/login.dart';
 import 'package:project_mobile/utils/colors.dart';
 import 'package:project_mobile/utils/dimensions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AdminPage extends StatelessWidget {
+class AdminPage extends StatefulWidget {
   const AdminPage({super.key});
+
+  @override
+  State<AdminPage> createState() => _AdminPageState();
+}
+
+class _AdminPageState extends State<AdminPage> {
+  Future<void> _addMissingDescriptions() async {
+    final firestore = FirebaseFirestore.instance;
+    final productsSnapshot = await firestore.collection('products').get();
+
+    for (var doc in productsSnapshot.docs) {
+      final data = doc.data();
+      if (!data.containsKey('description')) {
+        await firestore.collection('products').doc(doc.id).update({
+          'description': 'Chưa có mô tả sản phẩm',
+        });
+        debugPrint('✅ Đã thêm mô tả cho: ${doc.id}');
+      } else {
+        debugPrint('⏭️ Đã có mô tả cho: ${doc.id}');
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã cập nhật mô tả cho sản phẩm thiếu')),
+      );
+    }
+  }
+
+  Future<void> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    Get.offAll(() => const LoginPage());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +52,13 @@ class AdminPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Trang Quản Trị", style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.veriPeri,
+        actions: [
+          IconButton(
+            onPressed: _signOut,
+            icon: const Icon(Icons.logout, color: Colors.white),
+            tooltip: 'Đăng xuất',
+          )
+        ],
       ),
       body: Padding(
         padding: EdgeInsets.all(Dimensions.width20),
@@ -50,6 +95,25 @@ class AdminPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (_) => const ManageOrdersPage()),
               ),
+            ),
+            SizedBox(height: Dimensions.height20),
+            _buildAdminCard(
+              context,
+              title: "Quản lý mã giảm giá",
+              subtitle: "Tạo và kích hoạt mã voucher",
+              icon: Icons.discount,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ManageVouchersPage()),
+              ),
+            ),
+            SizedBox(height: Dimensions.height20),
+            _buildAdminCard(
+              context,
+              title: "Cập nhật mô tả thiếu",
+              subtitle: "Thêm mô tả cho sản phẩm chưa có",
+              icon: Icons.update,
+              onTap: _addMissingDescriptions,
             ),
           ],
         ),

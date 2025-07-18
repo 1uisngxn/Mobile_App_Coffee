@@ -1,132 +1,96 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:project_mobile/utils/colors.dart';
-import 'package:project_mobile/utils/dimensions.dart';
 
 class DiscountPage extends StatefulWidget {
-  const DiscountPage({super.key});
+  final double subtotal;
 
+  const DiscountPage({Key? key, required this.subtotal}) : super(key: key);
 
   @override
   State<DiscountPage> createState() => _DiscountPageState();
 }
 
 class _DiscountPageState extends State<DiscountPage> {
-  double selectedDiscountPercent = 0.0;
-  double discountPercent = 0.0;
-  bool discountApplied = false;
+  final TextEditingController _codeController = TextEditingController();
+  bool _isLoading = false;
+  String? _error;
+
+  Future<void> _applyVoucher() async {
+    final code = _codeController.text.trim();
+
+    if (code.isEmpty) {
+      setState(() => _error = 'Vui lòng nhập mã giảm giá');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('vouchers')
+          .where('code', isEqualTo: code)
+          .where('isActive', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        setState(() {
+          _error = 'Mã không tồn tại hoặc đã hết hạn';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final data = snapshot.docs.first.data();
+      final type = data['type'];
+      final discountValue = data['discount'] ?? 0;
+
+      double discountAmount = 0.0;
+
+      if (type == 'fixed') {
+        discountAmount = discountValue.toDouble();
+      } else if (type == 'percentage') {
+        discountAmount = widget.subtotal * (discountValue / 100);
+      }
+
+      Navigator.pop(context, {
+        'discountAmount': discountAmount,
+        'voucherId': snapshot.docs.first.id,
+        'description': code,
+      });
+    } catch (e) {
+      setState(() => _error = 'Đã xảy ra lỗi: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Mã giảm giá',style: TextStyle(color: AppColors.textColor_white),),
-        backgroundColor: AppColors.mainColor,
-      ),
+      appBar: AppBar(title: const Text('Nhập mã giảm giá')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Handle enter voucher code
-                    },
-                    icon: Icon(Icons.card_giftcard),
-                    label: Text('Nhập mã voucher'),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white, backgroundColor:AppColors.mainColor,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Handle find more vouchers
-                    },
-                    icon: Icon(Icons.search),
-                    label: Text('Tìm thêm voucher',style: TextStyle(fontFamily: 'RobotoCondensed',color: AppColors.textColor_white),),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white, backgroundColor:AppColors.mainColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: ListView(
-                children: [
-                  _buildVoucherItem('assets/images/discount_freeship.png', 'Miễn phí vận chuyển'),
-                  _buildVoucherItem('assets/images/discount_freeship.png', 'Miễn phí vận chuyển'),
-                  _buildVoucherItem('assets/images/discount_50.png', 'Giảm 50% tổng bill'),
-                  _buildVoucherItem('assets/images/discount_20.png', 'Giảm 20% tổng bill'),
-                  _buildVoucherItem('assets/images/discount_10.png', 'Giảm 10% tổng bill'),
-                ],
+            TextField(
+              controller: _codeController,
+              decoration: const InputDecoration(
+                labelText: 'Mã giảm giá',
               ),
             ),
-            SizedBox(height: Dimensions.height10),
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  // Handle load more vouchers
-                },
-                child: Text('Xem thêm'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVoucherItem(String imagePath, String description) {
-    return Padding(
-      padding:  EdgeInsets.symmetric(vertical:Dimensions.height10),
-      child: Container(
-        padding: EdgeInsets.all(Dimensions.width15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(Dimensions.radius15-3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Image.asset(
-              imagePath,
-              width: Dimensions.width100+20,
-              height: Dimensions.height60,
-              fit: BoxFit.cover,
-            ),
-            SizedBox(width: Dimensions.width15),
-            Expanded(
-              child: Text(
-                description,
-                style: TextStyle(
-                  fontFamily: 'RobotoCondensed',
-                  fontSize: Dimensions.font15,
-                ),
-              ),
-            ),
+            const SizedBox(height: 12),
+            if (_error != null)
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 12),
             ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  selectedDiscountPercent = 0.5; // Cập nhật giá trị voucher đã chọn vào đây
-                });
-              },
-              child: Text('Dùng Ngay'),
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.green,
-              ),
+              onPressed: _isLoading ? null : _applyVoucher,
+              child: _isLoading
+                  ? const CircularProgressIndicator()
+                  : const Text('Áp dụng'),
             ),
           ],
         ),

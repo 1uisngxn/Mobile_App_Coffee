@@ -22,12 +22,26 @@ class RegisterState extends State<Register> {
   final _confirmpassController = TextEditingController();
 
   bool _isLoading = false;
+  String? _usernameError;
+
+  Future<bool> _isUsernameTaken(String username) async {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('name', isEqualTo: username)
+        .limit(1)
+        .get();
+    return querySnapshot.docs.isNotEmpty;
+  }
 
   void _handleRegister() async {
     final email = _emailController.text.trim();
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmpassController.text;
+
+    setState(() {
+      _usernameError = null;
+    });
 
     if (email.isEmpty || username.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       _showSnackbar("Vui lòng điền đầy đủ thông tin");
@@ -44,17 +58,25 @@ class RegisterState extends State<Register> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     try {
-      setState(() {
-        _isLoading = true;
-      });
+      final usernameExists = await _isUsernameTaken(username);
+      if (usernameExists) {
+        setState(() {
+          _usernameError = "Tên đăng nhập đã tồn tại";
+          _isLoading = false;
+        });
+        return;
+      }
 
       final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Lưu vào Firestore
+      await userCredential.user!.sendEmailVerification();
+
       await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
         'uid': userCredential.user!.uid,
         'name': username,
@@ -62,20 +84,19 @@ class RegisterState extends State<Register> {
         'address': '',
         'phoneNumber': '',
         'avatarUrl': null,
-        'role': 'user', // mặc định
+        'role': 'user',
       });
 
-      _showSnackbar("Đăng ký thành công. Vui lòng đăng nhập.");
+      _showSnackbar("Đăng ký thành công. Vui lòng kiểm tra email để xác thực.");
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
+        MaterialPageRoute(builder: (_) => const LoginPage()),
       );
     } on FirebaseAuthException catch (e) {
       _showSnackbar(e.message ?? "Đăng ký thất bại");
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -102,13 +123,30 @@ class RegisterState extends State<Register> {
               width: double.infinity,
             ),
             SizedBox(height: Dimensions.height15),
-            CustomTextField(controller: _emailController, hintText: 'Email', obscureText: false),
+            CustomTextField(
+              controller: _emailController,
+              hintText: 'Email',
+              obscureText: false,
+            ),
             SizedBox(height: Dimensions.height10),
-            CustomTextField(controller: _usernameController, hintText: 'Tên đăng nhập', obscureText: false),
+            CustomTextField(
+              controller: _usernameController,
+              hintText: 'Tên đăng nhập',
+              obscureText: false,
+              errorText: _usernameError,
+            ),
             SizedBox(height: Dimensions.height10),
-            CustomTextField(controller: _passwordController, hintText: 'Mật khẩu', obscureText: true),
+            CustomTextField(
+              controller: _passwordController,
+              hintText: 'Mật khẩu',
+              obscureText: true,
+            ),
             SizedBox(height: Dimensions.height10),
-            CustomTextField(controller: _confirmpassController, hintText: 'Xác nhận mật khẩu', obscureText: true),
+            CustomTextField(
+              controller: _confirmpassController,
+              hintText: 'Xác nhận mật khẩu',
+              obscureText: true,
+            ),
             SizedBox(height: Dimensions.height15),
             Row(
               children: [

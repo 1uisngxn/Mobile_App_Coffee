@@ -17,15 +17,18 @@ class ProductService {
 
   // Lấy tất cả sản phẩm
   Future<List<ProductModel>> getAllProducts() async {
-    try {
-      QuerySnapshot snapshot = await productsCollection.get();
-      return snapshot.docs.map((doc) {
-        return ProductModel.fromJson(doc.data() as Map<String, dynamic>);
-      }).toList();
-    } catch (e) {
-      throw Exception('Lỗi khi lấy danh sách sản phẩm: $e');
-    }
+  try {
+    QuerySnapshot snapshot = await productsCollection.get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return ProductModel.fromJson(data, doc.id); // ✅ truyền id
+    }).toList();
+  } catch (e) {
+    throw Exception('Lỗi khi lấy danh sách sản phẩm: $e');
   }
+}
+
+
 
   // Cập nhật sản phẩm
   Future<void> updateProduct(ProductModel product) async {
@@ -46,15 +49,16 @@ class ProductService {
   }
 
   // Lấy 1 sản phẩm theo ID
-  Future<ProductModel?> getProductById(String id) async {
-    try {
-      DocumentSnapshot doc = await productsCollection.doc(id).get();
-      if (doc.exists) {
-        return ProductModel.fromJson(doc.data() as Map<String, dynamic>);
-      }
-      return null;
-    } catch (e) {
-      throw Exception('Lỗi khi lấy sản phẩm theo ID: $e');
+ Future<ProductModel?> getProductById(String id) async {
+  try {
+    DocumentSnapshot doc = await productsCollection.doc(id).get();
+    if (doc.exists) {
+      final data = doc.data() as Map<String, dynamic>;
+      return ProductModel.fromJson(data, doc.id); // ✅ truyền id
     }
+    return null;
+  } catch (e) {
+    throw Exception('Lỗi khi lấy sản phẩm theo ID: $e');
   }
+ }
 }

@@ -29,8 +29,14 @@ class CartService {
     }
   }
 
-  Future<void> removeFromCart(String productId) async {
+  Future<void> removeCartItem(String productId) async {
     await _firestore.collection('users').doc(_uid).collection('cart').doc(productId).delete();
+  }
+
+  Future<void> updateCartItemQuantity(String productId, int quantity) async {
+    await _firestore.collection('users').doc(_uid).collection('cart').doc(productId).update({
+      'quantity': quantity,
+    });
   }
 
   Future<void> clearCart() async {

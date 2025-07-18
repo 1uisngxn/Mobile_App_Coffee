@@ -68,6 +68,7 @@ class _CoffeePageBodyState extends State<CoffeePageBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Banner slider
           Container(
             height: Dimensions.pageViewContainers,
             child: PageView.builder(
@@ -77,6 +78,7 @@ class _CoffeePageBodyState extends State<CoffeePageBody> {
             ),
           ),
           SizedBox(height: Dimensions.height10),
+
           DotsIndicator(
             dotsCount: bannerList.isEmpty ? 1 : bannerList.length,
             position: _currPageIndex,
@@ -90,6 +92,8 @@ class _CoffeePageBodyState extends State<CoffeePageBody> {
             ),
           ),
           SizedBox(height: Dimensions.height10),
+
+          // Best Sales title
           Padding(
             padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
             child: Column(
@@ -105,15 +109,16 @@ class _CoffeePageBodyState extends State<CoffeePageBody> {
               ],
             ),
           ),
+
+          // Product list
           _loading
-              ? Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator())
               : _products.isEmpty
-                  ? Center(child: Text("Không có sản phẩm nào."))
+                  ? const Center(child: Text("Không có sản phẩm nào."))
                   : Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: Dimensions.width20),
+                      padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
                       child: GridView.builder(
-                        physics: NeverScrollableScrollPhysics(),
+                        physics: const NeverScrollableScrollPhysics(),
                         shrinkWrap: true,
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
@@ -124,13 +129,13 @@ class _CoffeePageBodyState extends State<CoffeePageBody> {
                         itemCount: _products.length,
                         itemBuilder: (context, index) {
                           final product = _products[index];
+                           print("Image URL: ${product.imageUrl}"); // Thêm dòng này
                           return GestureDetector(
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      CoffeeDetailScreen(coffeeItem: product),
+                                  builder: (_) => CoffeeDetailScreen(coffeeItem: product),
                                 ),
                               );
                             },
@@ -138,47 +143,78 @@ class _CoffeePageBodyState extends State<CoffeePageBody> {
                               padding: EdgeInsets.all(Dimensions.width10),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius:
-                                    BorderRadius.circular(Dimensions.radius20),
+                                borderRadius: BorderRadius.circular(Dimensions.radius20),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.grey.withOpacity(0.3),
                                     blurRadius: 5,
-                                    offset: Offset(0, 3),
+                                    offset: const Offset(0, 3),
                                   )
                                 ],
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    height: Dimensions.listViewImgSize,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(
-                                          Dimensions.radius15),
-                                      image: DecorationImage(
-                                        image: NetworkImage(product.imageUrl),
-                                        fit: BoxFit.cover,
-                                      ),
+                                  // Image
+                                  ClipRRect(
+                              borderRadius: BorderRadius.circular(Dimensions.radius15),
+                              child: product.imageUrl.isNotEmpty
+                                  ? Image.network(
+                                      product.imageUrl,
+                                      height: Dimensions.listViewImgSize,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          height: Dimensions.listViewImgSize,
+                                          width: double.infinity,
+                                          color: Colors.grey[300],
+                                          alignment: Alignment.center,
+                                          child: const Icon(
+                                            Icons.broken_image,
+                                            size: 40,
+                                            color: Colors.grey,
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : Container(
+                                      height: Dimensions.listViewImgSize,
+                                      width: double.infinity,
+                                      color: Colors.grey[300],
+                                      alignment: Alignment.center,
+                                      child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
                                     ),
-                                  ),
+                            ),
+
                                   SizedBox(height: Dimensions.height10),
+
+                                  // Name
                                   BigText(
-                                      text: product.name,
-                                      size: Dimensions.font16),
-                                  SmallText(text: product.shortDescription),
+                                    text: product.name,
+                                    size: Dimensions.font16,
+                                  ),
+
+                                  // Short description
+                                  SmallText(
+                                    text: product.shortDescription,
+                                  ),
+
                                   SizedBox(height: Dimensions.height10),
+
+                                  // Status, distance, time
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       NormalText(text: product.status),
                                       NormalText(text: product.distance),
                                       NormalText(text: product.time),
                                     ],
                                   ),
+
                                   SizedBox(height: Dimensions.height5),
+
+                                  // Price
                                   Text(
                                     product.price,
                                     style: TextStyle(

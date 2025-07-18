@@ -11,11 +11,11 @@ class OrderReviewPage extends StatefulWidget {
   final double totalPrice;
 
   const OrderReviewPage({
-    Key? key,
+    super.key,
     required this.items,
     required this.shippingFee,
     required this.totalPrice,
-  }) : super(key: key);
+  });
 
   @override
   State<OrderReviewPage> createState() => _OrderReviewPageState();
@@ -24,7 +24,6 @@ class OrderReviewPage extends StatefulWidget {
 class _OrderReviewPageState extends State<OrderReviewPage> {
   final Map<String, double> _ratings = {};
   final Map<String, TextEditingController> _reviewControllers = {};
-
   final String? _userId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
@@ -48,17 +47,20 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
   Future<void> _submitAllReviews() async {
     if (_userId == null) return;
 
-    bool allFilled = true;
+    bool allValid = true;
     for (var entry in _ratings.entries) {
-      if (entry.value == 0 || _reviewControllers[entry.key]!.text.isEmpty) {
-        allFilled = false;
+      if (entry.value == 0 || _reviewControllers[entry.key]!.text.trim().isEmpty) {
+        allValid = false;
         break;
       }
     }
 
-    if (!allFilled) {
+    if (!allValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng đánh giá và nhận xét đầy đủ tất cả sản phẩm.')),
+        const SnackBar(
+          content: Text('Vui lòng đánh giá & nhận xét đầy đủ tất cả sản phẩm.'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -66,7 +68,7 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
     for (var item in widget.items) {
       final productId = item['productId'];
       final rating = _ratings[productId]!;
-      final reviewText = _reviewControllers[productId]!.text;
+      final reviewText = _reviewControllers[productId]!.text.trim();
 
       await FirebaseFirestore.instance
           .collection('reviews')
@@ -83,7 +85,10 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã gửi đánh giá thành công.')),
+      const SnackBar(
+        content: Text('🎉 Gửi đánh giá thành công!'),
+        backgroundColor: Colors.green,
+      ),
     );
 
     Navigator.pushAndRemoveUntil(
@@ -95,11 +100,13 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
 
   Widget _buildStarRating(String productId) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
       children: List.generate(5, (index) {
         return IconButton(
           icon: Icon(
             index < _ratings[productId]! ? Icons.star : Icons.star_border,
             color: Colors.amber,
+            size: 28,
           ),
           onPressed: () {
             setState(() {
@@ -123,46 +130,59 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
         child: Column(
           children: [
             Expanded(
-              child: ListView.builder(
+              child: ListView.separated(
                 itemCount: widget.items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
                 itemBuilder: (_, index) {
                   final item = widget.items[index];
                   final productId = item['productId'];
+
                   return Card(
-                    margin: EdgeInsets.only(bottom: Dimensions.height10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(Dimensions.radius15),
                     ),
+                    elevation: 3,
                     child: Padding(
-                      padding: EdgeInsets.all(Dimensions.height15),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Image.network(
-                                item['imageUrl'],
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  item['imageUrl'],
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
-                              SizedBox(width: Dimensions.width10),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   item['name'],
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: Dimensions.height10),
+                          const SizedBox(height: 12),
                           _buildStarRating(productId),
+                          const SizedBox(height: 8),
                           TextField(
                             controller: _reviewControllers[productId],
                             maxLines: 3,
-                            decoration: const InputDecoration(
-                              hintText: 'Viết nhận xét ở đây...',
-                              border: OutlineInputBorder(),
+                            decoration: InputDecoration(
+                              hintText: 'Nhận xét của bạn về sản phẩm...',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade100,
                             ),
                           ),
                         ],
@@ -172,19 +192,22 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
                 },
               ),
             ),
-            SizedBox(height: Dimensions.height15),
-            ElevatedButton(
+            SizedBox(height: Dimensions.height20),
+            ElevatedButton.icon(
               onPressed: _submitAllReviews,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.veriPeri,
-                minimumSize: const Size(double.infinity, 50),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                minimumSize: const Size.fromHeight(50),
               ),
-              child: const Text(
+              icon: const Icon(Icons.send),
+              label: const Text(
                 "Gửi đánh giá",
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(fontSize: 16),
               ),
             ),
-            SizedBox(height: Dimensions.height30),
+            const SizedBox(height: 10),
           ],
         ),
       ),
